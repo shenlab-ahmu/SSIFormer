@@ -1,0 +1,28 @@
+# A new sample for ssiformer.sample (python -m ssiformer.sample <this file> prepare | inputs | score | train).
+# Example: the K562 inputs of the benchmark, treated as a new sample. Relative paths are taken from the folder the command is
+# run from (here the repository root, with the raw files of raw/sources.tsv downloaded to raw/).
+name: K562_example
+genome: hg38                         # hg38 or mm10
+silencers: raw/silencerdb/lifted/Homo_sapiens_K562.hg38.bed.gz       # BED: chrom, start, end (further columns are ignored)
+bigwig:                              # the six marks of the human models (H3K27ac is not an input)
+  H3K4me3: raw/bigwig/K562/K562_H3K4me3.bigWig
+  H3K4me1: raw/bigwig/K562/K562_H3K4me1.bigWig
+  H3K9ac: raw/bigwig/K562/K562_H3K9ac.bigWig
+  H3K36me3: raw/bigwig/K562/K562_H3K36me3.bigWig
+  H3K9me3: raw/bigwig/K562/K562_H3K9me3.bigWig
+  H3K27me3: raw/bigwig/K562/K562_H3K27me3.bigWig
+# HiChIP loops of the sample (optional; 10-kb calls; Loop Catalog longrange file or BEDPE). With loops, the candidates are the
+# pairs of bins that anchor HiChIP SSIs and the sample can be trained on (train).
+loops: raw/loops/fhs/K562.GSE101498.Homo_Sapiens.H3K27ac.biorep_merged.10000.fithichip_hp.longrange.bed.gz
+# model used by 'score': <dataset>/<model> of configs/ssiformer.yaml; for a cell line with few SSIs, the model of another
+# cell line profiled with the same HiChIP target; after 'train': K562_example/ssiformer_pretrained_loops
+model: K562_H3K27ac/ssiformer_pretrained
+
+# optional settings
+# candidates: hichip                 # hichip (default with loops): bins that anchor HiChIP SSIs; silencers: every bin with a silencer locus
+# chromosomes: [chr17, chr21, chr22] # restrict all steps to these chromosomes
+# exclusion:                         # loops of further samples of the cell, excluded from the negatives of the training tables
+#   - {path: raw/loops/fhs/K562.GSE101498.Homo_Sapiens.H3K27ac.biorep_merged.5000.fithichip_hp.longrange.bed.gz, resolution: 5000}
+# design: perpos_eps001              # negative design of the training tables (configs/benchmark.yaml)
+# fasta: raw/fa/hg38.fa              # genome sequence, only needed when cache/genome_<genome>_1kb.npz is missing
+# out: samples/K562_example          # output folder (default samples/<name>)

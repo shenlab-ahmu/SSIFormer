@@ -1,0 +1,10 @@
+cache/
+runs/
+build/
+samples/
+raw/bigwig/
+raw/fa/
+raw/loops/
+raw/silencerdb/
+__pycache__/
+*.pyc

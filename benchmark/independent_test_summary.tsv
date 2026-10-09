@@ -1,0 +1,4 @@
+dataset	label	ssi_all_cv	ssi_all_heldout	dmin	dmax	ssi_cv	neg_cv	retained_cv	ssi_heldout	neg_heldout
+IT_mESC_SMC1A	mES.GSE80820.Mus_Musculus.SMC1A.b1	7274	1204	20000	1960000	3511	3511	0.8778	1082	1082
+IT_H9_RAD21	H9.GSE105028.Homo_Sapiens.Rad21.b1	40354	5060	20000	2000000	3230	3230	0.8075	2645	2645
+IT_H9_SMC1A	hESC-WT-D0.GSE120294.Homo_Sapiens.SMC1A.biorep_merged	23834	3942	20000	1980000	3415	3415	0.8538	2705	2705

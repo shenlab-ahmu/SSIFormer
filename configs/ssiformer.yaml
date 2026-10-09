@@ -1,0 +1,61 @@
+# SSIFormer datasets, model and training settings (the values used in the paper).
+# Training seeds: configs/seeds.tsv (torch seed and batch-order seed of every fold of the models of the paper, seed 0); other
+# datasets, models or seeds use seeds derived from their names. Seeds of the table construction: configs/benchmark.yaml.
+
+genomes:
+  hg38: {chroms: [chr1, chr2, chr3, chr4, chr5, chr6, chr7, chr8, chr9, chr10, chr11, chr12, chr13, chr14, chr15, chr16, chr17, chr18, chr19, chr20, chr21, chr22, chrX]}
+  mm10: {chroms: [chr1, chr2, chr3, chr4, chr5, chr6, chr7, chr8, chr9, chr10, chr11, chr12, chr13, chr14, chr15, chr16, chr17, chr18, chr19, chrX]}
+sealed_chromosomes: {hg38: [chr8, chr17], mm10: [chr4, chr12, chr19]}   # the held-out chromosomes
+
+marks: [H3K4me3, H3K4me1, H3K27ac, H3K9ac, H3K36me3, H3K9me3, H3K27me3]
+
+datasets:   # 10-kb bins; 'drop' = the histone mark that is not an input for the dataset
+  mESC_H3K27me3:   {cell: mESC,    genome: mm10, label: mESC.GSE150906.Mus_Musculus.H3K27me3.b1,             drop: H3K27me3}
+  mESC_H3K27ac:    {cell: mESC,    genome: mm10, label: mESC.GSE150906.Mus_Musculus.H3K27ac.b1,              drop: H3K27ac}
+  GM12878_H3K27ac: {cell: GM12878, genome: hg38, label: GM12878.GSE101498.Homo_Sapiens.H3K27ac.biorep_merged, drop: H3K27ac}
+  GM12878_SMC1A:   {cell: GM12878, genome: hg38, label: GM12878.GSE80820.Homo_Sapiens.SMC1A.biorep_merged,   drop: H3K27ac}
+  GM12878_CTCF:    {cell: GM12878, genome: hg38, label: GM12878.GSE115524.Homo_Sapiens.CTCF.biorep_merged,   drop: H3K27ac}
+  K562_H3K27ac:    {cell: K562,    genome: hg38, label: K562.GSE101498.Homo_Sapiens.H3K27ac.biorep_merged,   drop: H3K27ac}
+  HeLaS3_CTCF:     {cell: HeLa-S3, genome: hg38, label: Hela-S3-Control.GSE108869.Homo_Sapiens.CTCF.b1,      drop: H3K27ac}
+independent_test_datasets:   # not used for any choice of the method (held-out chromosomes evaluated once)
+  IT_mESC_SMC1A:   {cell: mESC,    genome: mm10, label: mES.GSE80820.Mus_Musculus.SMC1A.b1,                    drop: H3K27ac}
+  IT_H9_RAD21:     {cell: H9,      genome: hg38, label: H9.GSE105028.Homo_Sapiens.Rad21.b1,                    drop: H3K27ac}
+  IT_H9_SMC1A:     {cell: H9,      genome: hg38, label: hESC-WT-D0.GSE120294.Homo_Sapiens.SMC1A.biorep_merged, drop: H3K27ac}
+resolution: 10000
+mouse_datasets: [mESC_H3K27me3, mESC_H3K27ac]
+human_datasets: [GM12878_H3K27ac, GM12878_SMC1A, GM12878_CTCF, K562_H3K27ac, HeLaS3_CTCF]
+
+folds: {n: 5, test: k, early_stopping: (k + 1) mod 5, train: the other three}
+
+input:
+  flank_tokens: 50            # 50 kb of 1-kb tokens on each side of the two anchor bins
+  motifs: {CTCF: MA0139.1, REST: MA0138.3, YY1: MA0095.4, ZNF143: MA0088.3}
+  token_channels: [six marks, CTCF+_maxrel, CTCF+_count, CTCF-_maxrel, CTCF-_count, REST_count, YY1_count, ZNF143_count, silcnt, anchor_ind]
+  anchor_tensor: "3 scales x 6 marks x 20 positions: 1 kb @ 50 bp, 10 kb @ 500 bp, 100 kb @ 5 kb, centred on the anchor bin"
+  normalisation: "per fold, training rows only: token channels (not anchor_ind) z-scored over all in-chromosome training tokens; anchor tensors per (scale, mark); log10 distance"
+
+models:   # equivariant: orientation symmetrisation (random orientation flip in training, prediction = mean of both orientations)
+  ssiformer:            {family: ssiformer, equivariant: true, pretrained: false}    # trained on the dataset alone
+  ssiformer_pretrained: {family: ssiformer, equivariant: true, pretrained: true}   # pretrained on mESC H3K27ac, fine-tuned
+  # trained on the SSIs and the loops without silencers of the dataset's HiChIP sample (benchmark/loops); early stopping and test on the SSIs
+  ssiformer_loops:            {family: ssiformer, equivariant: true, pretrained: false, extra_loops: true}
+  ssiformer_pretrained_loops: {family: ssiformer, equivariant: true, pretrained: true,  extra_loops: true}   # extended configuration
+
+pretraining: {source_dataset: mESC_H3K27ac, train_folds: [1, 2, 3, 4], early_stopping_fold: 0}
+
+extra_loops:   # training of the models with extra_loops: true (ssiformer.train --extra-loops)
+  memory_budget: 19360000               # micro-batch budget used for these models (16 x 1100^2)
+  prediction_budget: 38720000           # early-stopping and test batches are split so that their sum of squared input lengths stays within this value
+
+training:
+  loss: binary cross-entropy (mean over the batch)
+  optimiser: {name: AdamW, lr: 5.0e-4, weight_decay: 0.05, betas: [0.9, 0.999]}
+  schedule: "linear warm-up over epoch 1, then cosine to 0 over the rest of 40 epochs"
+  max_epochs: 40
+  patience: 6                     # epochs without an increase (> 1e-6) of the early-stopping-fold AUROC
+  batch: 32                       # length-bucketed, batch order permuted every epoch
+  grad_clip: 1.0
+  precision: fp16 autocast + GradScaler
+  orientation_flip_p: 0.5         # prediction = mean over both orientations
+  memory_budget: 38720000         # 32 x 1100^2: longer batches are split into micro-batches (same step)
+  seed: 0

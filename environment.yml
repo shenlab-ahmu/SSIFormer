@@ -1,0 +1,17 @@
+# Environment used for the results of the paper (Linux x86-64, NVIDIA GPU with a driver for CUDA 11.8).
+# conda env create -f environment.yml && conda activate ssiformer
+name: ssiformer
+channels: [conda-forge]
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - --extra-index-url https://download.pytorch.org/whl/cu118
+      - torch==2.0.0+cu118
+      - numpy==1.26.4
+      - pandas==2.3.3
+      - scipy==1.15.2
+      - scikit-learn==1.7.2
+      - PyYAML==6.0.3
+      - pyfaidx==0.9.0.4      # ssiformer.build and ssiformer.sample (genome sequence)
+      - pyBigWig==0.3.22      # ssiformer.build and ssiformer.sample (bigWig files)

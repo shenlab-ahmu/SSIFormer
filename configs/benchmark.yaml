@@ -1,0 +1,88 @@
+# Construction of the SSI benchmark tables (ssiformer/build.py). Raw inputs (public downloads) are expected in raw/: loop calls of the
+# Loop Catalog (raw/loops), SilencerDB elements lifted to hg38 / mm10 (raw/silencerdb/lifted), ENCODE bigWigs (raw/bigwig),
+# genome sequences (raw/fa) and JASPAR matrices (raw/jaspar, included).
+
+universes:   # SilencerDB v1.0 elements, lifted to hg38 / mm10 (UCSC liftOver, default minMatch 0.95); name column = id|method
+  GM12878:        {file: silencerdb/lifted/Homo_sapiens_GM12878.hg38.bed.gz, genome: hg38, methods: all}
+  K562:           {file: silencerdb/lifted/Homo_sapiens_K562.hg38.bed.gz, genome: hg38, methods: all}
+  HeLa-S3:        {file: silencerdb/lifted/Homo_sapiens_HeLa-S3.hg38.bed.gz, genome: hg38, methods: all}
+  mESC_predicted: {file: silencerdb/lifted/Mus_musculus_Embryonic_stem_cell.mm10.bed.gz, genome: mm10, methods: [gkmSVM, DeepSilencer]}
+  hESC:           {file: silencerdb/lifted/Homo_sapiens_Embryonic_stem_cell.hg38.bed.gz, genome: hg38, methods: all}   # H9 (independent test)
+merge_rule: "per chromosome, sorted by start; an interval joins the current locus iff start < current end (>= 1 bp overlap); book-ended intervals stay separate; locus = its midpoint"
+
+fold_balance: {hg38: [GM12878, K562], mm10: [mESC_predicted]}   # silencer-locus counts balanced greedily over 5 folds (sealed chromosomes excluded)
+
+cell_universe: {GM12878: GM12878, K562: K562, HeLa-S3: HeLa-S3, mESC: mESC_predicted, H9: hESC}
+
+# negative design of each dataset (see ssiformer/build.py: DESIGNS)
+design: {mESC_H3K27me3: perpos_eps001, mESC_H3K27ac: base, GM12878_H3K27ac: perpos_eps001, GM12878_SMC1A: perpos_eps001,
+         GM12878_CTCF: perpos_eps001, K562_H3K27ac: perpos_eps001, HeLaS3_CTCF: base}   # independent-test datasets: perpos_eps001
+# seeds of the random draws of the negatives of the tables (cross-validation and held-out chromosomes); other datasets use seeds
+# derived from their names
+table_seed:
+  crossval: {mESC_H3K27me3: 635573086, mESC_H3K27ac: 3153310293, GM12878_H3K27ac: 3079238457, GM12878_SMC1A: 1899612514,
+             GM12878_CTCF: 891280397, K562_H3K27ac: 549595438, HeLaS3_CTCF: 2573506972}
+  heldout:  {mESC_H3K27me3: 2723853469, mESC_H3K27ac: 3291815033, GM12878_H3K27ac: 2048320374, GM12878_SMC1A: 3404458286,
+             GM12878_CTCF: 3730569443, K562_H3K27ac: 2699322706}
+min_distance: 20000
+
+# exclusion loop sets per cell: every pair near any of these loops is not a candidate negative
+# near: task bin A matches loop anchor x (resolution r_L) iff [A*r, (A+1)*r) overlaps [(x-1)*r_L, (x+2)*r_L); a pair is near a
+# loop iff its two bins match the loop's two anchors
+exclusion:
+  GM12878:
+    - {samples: [GM12878.GSE101498.Homo_Sapiens.H3K27ac.biorep_merged, GM12878.GSE101498.Homo_Sapiens.H3K27ac.b1, GM12878.GSE101498.Homo_Sapiens.H3K27ac.b2], fhs_res: [5000, 10000, 25000]}
+    - {fhl_5kb: [GM12878.GSE101498.Homo_Sapiens.H3K27ac.b1, GM12878.GSE101498.Homo_Sapiens.H3K27ac.b2]}
+    - {samples: [GM12878.GSE80820.Homo_Sapiens.SMC1A.biorep_merged, GM12878.GSE80820.Homo_Sapiens.SMC1A.b1, GM12878.GSE80820.Homo_Sapiens.SMC1A.b2], fhs_res: [5000, 10000, 25000]}
+    - {samples: [GM12878.GSE115524.Homo_Sapiens.CTCF.biorep_merged, GM12878.GSE115524.Homo_Sapiens.CTCF.b1, GM12878.GSE115524.Homo_Sapiens.CTCF.b2], fhs_res: [5000, 10000, 25000]}
+  K562:
+    - {samples: [K562.GSE101498.Homo_Sapiens.H3K27ac.biorep_merged, K562.GSE101498.Homo_Sapiens.H3K27ac.b1, K562.GSE101498.Homo_Sapiens.H3K27ac.b2, K562.GSE101498.Homo_Sapiens.H3K27ac.b3], fhs_res: [5000, 10000, 25000]}
+  mESC:
+    - {samples: [mESC.GSE150906.Mus_Musculus.H3K27ac.b1], fhs_res: [5000, 10000, 25000], fhl_5kb: true, hiccups_10kb: true}
+    - {samples: [mESC.GSE150906.Mus_Musculus.H3K27me3.b1], fhs_res: [5000, 10000, 25000], fhl_5kb: true, hiccups_10kb: true}
+    - {samples: [mES.GSE80820.Mus_Musculus.SMC1A.biorep_merged, mES.GSE80820.Mus_Musculus.SMC1A.b1, mES.GSE80820.Mus_Musculus.SMC1A.b2], fhs_res: [5000, 10000, 25000]}
+    - {samples: [mESC_RYBP_WT.GSE147919.Mus_Musculus.CTCF.biorep_merged, mESC_RYBP_WT.GSE147919.Mus_Musculus.CTCF.b1, mESC_RYBP_WT.GSE147919.Mus_Musculus.CTCF.b2], fhs_res: [5000, 10000, 25000]}
+  HeLa-S3:
+    - {samples: [HeLa-S3-shBHLHE40.GSE137849.Homo_Sapiens.CTCF.b1, HeLa-S3-shBHLHE40.GSE137849.Homo_Sapiens.CTCF.b2, HeLa-S3-shBHLHE40.GSE137849.Homo_Sapiens.CTCF.biorep_merged,
+                HeLa-S3-shcontrol.GSE137849.Homo_Sapiens.CTCF.b1, HeLa-S3-shcontrol.GSE137849.Homo_Sapiens.CTCF.b2, HeLa-S3-shcontrol.GSE137849.Homo_Sapiens.CTCF.biorep_merged,
+                Hela-S3-Control.GSE108869.Homo_Sapiens.CTCF.b1, Hela-S3-Control.GSE108869.Homo_Sapiens.CTCF.b2], fhs_res: [5000, 10000, 25000]}
+  H9:   # every untreated HiChIP sample of H9 cells served by the Loop Catalog at 10 kb (independent test)
+    - {samples: [H9.GSE105028.Homo_Sapiens.CTCF.b1, H9.GSE105028.Homo_Sapiens.H3K4me1.b1, H9.GSE105028.Homo_Sapiens.KLF4.b1,
+                H9.GSE105028.Homo_Sapiens.NANOG.b1, H9.GSE105028.Homo_Sapiens.OCT4.b1, H9.GSE105028.Homo_Sapiens.Rad21.b1,
+                H9.GSE210525.Homo_Sapiens.H3K27ac.b1, H9.GSE210525.Homo_Sapiens.H3K27ac.b2, H9.GSE210525.Homo_Sapiens.H3K27ac.biorep_merged,
+                H9.GSE210525.Homo_Sapiens.H3K4me1.b1, H9.GSE210525.Homo_Sapiens.H3K4me1.b2, H9.GSE210525.Homo_Sapiens.H3K4me1.biorep_merged,
+                H9.GSE210525.Homo_Sapiens.H3K9me3.b1, H9.GSE210525.Homo_Sapiens.H3K9me3.biorep_merged, H9.GSE210525.Homo_Sapiens.RNA-Pol-II.b1,
+                H9.GSE210525.Homo_Sapiens.RNA-Pol-II.b2, H9.GSE210525.Homo_Sapiens.RNA-Pol-II.biorep_merged, H9.GSE210525.Homo_Sapiens.RNAPII-S2ph.b1,
+                H9.GSE210525.Homo_Sapiens.STAG1.b1, H9.GSE210525.Homo_Sapiens.STAG1.b2, H9.GSE210525.Homo_Sapiens.STAG1.biorep_merged,
+                H9.GSE210525.Homo_Sapiens.STAG2.b1, H9.GSE210525.Homo_Sapiens.STAG2.b2, H9.GSE210525.Homo_Sapiens.STAG2.biorep_merged,
+                hESC-WT-D0.GSE120294.Homo_Sapiens.SMC1A.b1, hESC-WT-D0.GSE120294.Homo_Sapiens.SMC1A.b2, hESC-WT-D0.GSE120294.Homo_Sapiens.SMC1A.b3,
+                hESC-WT-D0.GSE120294.Homo_Sapiens.SMC1A.biorep_merged], fhs_res: [5000, 10000, 25000]}
+
+# tables of the loops without silencers of a dataset's HiChIP sample (ssiformer.build loops -> benchmark/loops; training with --extra-loops):
+# loops of the sample (10-kb FitHiChIP stringent, b - a >= 2) with no silencer-locus midpoint in either anchor bin, on the
+# cross-validation chromosomes, min_distance <= d <= max_distance; at most factor x the SSIs of the dataset on the
+# cross-validation chromosomes (before negative matching) and at most max_loops loops, drawn at random (numpy default_rng with
+# draw_seed); negatives 1:1 from pairs of their anchor bins by the rules of the SSI table (design of the dataset, generator
+# rng_of('CTRL', <dataset>, 'tables_<design>')): not a loop of the sample, not near a loop of the exclusion set of the cell
+# plus exclusion_added.
+other_loops:
+  min_distance: 20000
+  max_distance: 2000000
+  factor: 10
+  max_loops: 30000
+  draw_seed: {GM12878_H3K27ac: 3832507399, GM12878_SMC1A: 2933391809, GM12878_CTCF: 4210357032, K562_H3K27ac: 785132501, HeLaS3_CTCF: 1755959985}
+  exclusion_added:
+    K562:   # a further control HiChIP sample of K562
+      - {samples: [K562-dTAG-BRD4-DMSO.GSE214591.Homo_Sapiens.H3K27ac.biorep_merged], fhs_res: [5000, 10000, 25000]}
+
+# The independent-test datasets (benchmark/tables/IT_*.tsv.gz and benchmark/sealed/IT_*.tsv.gz) were built with the same rules
+# (design perpos_eps001; at most 4,000 SSIs of the cross-validation chromosomes and 3,000 of the held-out chromosomes, drawn at
+# random, entered negative matching). For IT_mESC_SMC1A, the loops of further untreated mESC samples were also excluded:
+# mES_25m.GSE101498.Mus_Musculus.H3K27ac.b1 / .b2, E14_mESC_WT.GSE160656.Mus_Musculus.H3K27me3.b1 / .b2 and
+# mESC_WT.GSE147919.Mus_Musculus.RYBP.b1 / .b2 (FitHiChIP calls at 5, 10 and 25 kb).
+
+tracks:
+  transform: "log1p(mean signal per kb); bigWig NaN treated as 0"
+  bigwig: "raw/bigwig/{cell}/{cell}_{mark}.bigWig (ENCODE signal p-value files; accessions in sources.tsv)"
+  anchor_scales: [[1000, 20], [10000, 20], [100000, 20]]   # window width, bins
+motif_scan: {threshold: 0.85, pseudocount: 0.8, background: uniform}
