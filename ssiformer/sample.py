@@ -29,7 +29,7 @@ table (SSIs of the cross-validation chromosomes with 1:1 negatives from pairs of
 or of the exclusion files) and the table of loops without silencers; folds and held-out chromosomes of benchmark/folds_<genome>.tsv.
 inputs: 1-kb tracks of the marks and of the silencer-locus midpoints, motif channels (from the genome inputs of the repository,
 else computed from the fasta), anchor tensors of every bin of the candidates and tables.
-score: each candidate pair is scored by the mean of the five fold models, each with the input normalisation it was trained
+score: each candidate pair is scored by the mean of the five fold models, each with the input normalization it was trained
 with, averaged over both orientations of the pair. Output samples/<name>/scores.tsv: chrom, a, b (10-kb bin indices), start_a,
 start_b, distance, hichip_ssi, logit, probability, percentile_a and percentile_b (percentage of the candidate pairs of anchor
 bin a, resp. b, scored at or below the pair: its rank among the partners of each anchor), with --strand-exchange

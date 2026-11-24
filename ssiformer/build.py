@@ -514,7 +514,7 @@ CHUNK_BP = 4_000_000   # bigWig bases read at once
 
 def bigwig_inputs(path, chrom, centres):
     """1-kb track (log1p of the mean signal per kb; NaN = 0) and anchor tensors (log1p of window means at the scales of
-    configs/benchmark.yaml, centred on the given positions) of one chromosome of a bigWig; None if the chromosome is absent.
+    configs/benchmark.yaml, centered on the given positions) of one chromosome of a bigWig; None if the chromosome is absent.
     The chromosome is read in chunks; the float64 running sum is carried from chunk to chunk, which gives the same numbers as
     one cumulative sum over the whole chromosome."""
     import pyBigWig

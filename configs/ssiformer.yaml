@@ -31,10 +31,10 @@ input:
   flank_tokens: 50            # 50 kb of 1-kb tokens on each side of the two anchor bins
   motifs: {CTCF: MA0139.1, REST: MA0138.3, YY1: MA0095.4, ZNF143: MA0088.3}
   token_channels: [six marks, CTCF+_maxrel, CTCF+_count, CTCF-_maxrel, CTCF-_count, REST_count, YY1_count, ZNF143_count, silcnt, anchor_ind]
-  anchor_tensor: "3 scales x 6 marks x 20 positions: 1 kb @ 50 bp, 10 kb @ 500 bp, 100 kb @ 5 kb, centred on the anchor bin"
+  anchor_tensor: "3 scales x 6 marks x 20 positions: 1 kb @ 50 bp, 10 kb @ 500 bp, 100 kb @ 5 kb, centered on the anchor bin"
   normalisation: "per fold, training rows only: token channels (not anchor_ind) z-scored over all in-chromosome training tokens; anchor tensors per (scale, mark); log10 distance"
 
-models:   # equivariant: orientation symmetrisation (random orientation flip in training, prediction = mean of both orientations)
+models:   # equivariant: orientation symmetrization (random orientation flip in training, prediction = mean of both orientations)
   ssiformer:            {family: ssiformer, equivariant: true, pretrained: false}    # trained on the dataset alone
   ssiformer_pretrained: {family: ssiformer, equivariant: true, pretrained: true}   # pretrained on mESC H3K27ac, fine-tuned
   # trained on the SSIs and the loops without silencers of the dataset's HiChIP sample (benchmark/loops); early stopping and test on the SSIs

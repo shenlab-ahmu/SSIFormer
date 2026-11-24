@@ -1,4 +1,4 @@
-# SSIFormer: a loop-domain Transformer predicts silencer–silencer interactions across cell types and species
+# SSIFormer: genome-wide prediction of silencer–silencer interactions across cell types and species
 
 SSIFormer predicts silencer–silencer interactions (SSIs) from the whole loop domain between two silencer anchors. A
 shared multi-scale anchor encoder reads the histone marks around each anchor; a Transformer with rotary position
@@ -7,7 +7,7 @@ ZNF143 motifs, silencer loci, anchor indicator); a symmetric readout combines bo
 genomic distance. A pair is presented in a random orientation during training, and the prediction is the mean over both
 orientations. On mouse datasets SSIFormer is trained from scratch; on human datasets it is pretrained on mESC H3K27ac
 and fine-tuned. For a human sample with HiChIP loops, the paper recommends the extended configuration: the
-mouse-pretrained model fine-tuned on the SSIs and the loops without silencers of the sample (evaluated by cross-validation).
+mouse-pretrained model fine-tuned on the SSIs and the loops without silencers of the sample.
 
 This repository contains the source code of SSIFormer, the trained models of the paper, the SSI datasets and the
 workflow for a new sample.
@@ -22,7 +22,7 @@ workflow for a new sample.
 | `ssiformer/sample.py` | a new sample: candidate pairs, model inputs, scores, training on the sample |
 | `ssiformer/build.py` | construction of the SSI datasets, of the tables of loops without silencers and of the model inputs from the raw files |
 | `configs/` | datasets, model and training settings (`ssiformer.yaml`); construction rules of the datasets (`benchmark.yaml`); template of a new sample (`sample_example.yaml`) |
-| `weights/` | trained models: five fold models per dataset and model (`fold<k>.pt`, fp16, with the input normalisation `fold<k>.norm.json`), the mESC H3K27ac model used for pretraining (`pretrain/ssiformer.pt`); `SHA256SUMS` |
+| `weights/` | trained models: five fold models per dataset and model (`fold<k>.pt`, fp16, with the input normalization `fold<k>.norm.json`), the mESC H3K27ac model used for pretraining (`pretrain/ssiformer.pt`); `SHA256SUMS` |
 | `benchmark/tables/` | SSI datasets: pairs of 10-kb bins with as many matched negatives as SSIs (`chrom, a, b, d, label, fold`) |
 | `benchmark/sealed/` | the same for the held-out chromosomes (human chr8 and chr17; mouse chr4, chr12 and chr19); HeLa-S3 CTCF has no held-out table |
 | `benchmark/loops/` | tables of the loops without silencers of the HiChIP sample of each human dataset (no silencer in either anchor bin; with matched negatives; same columns and folds) |
@@ -50,7 +50,7 @@ conda env create -f environment.yml      # Python 3.10, PyTorch 2.0.0 (CUDA 11.8
 conda activate ssiformer
 ```
 
-The code needs an NVIDIA GPU (the models of the paper were trained and applied on RTX 3090 and RTX 3070 cards with
+The code needs an NVIDIA GPU (the models of the paper were trained and applied with
 Python 3.10 and PyTorch 2.0.0). The construction of datasets and inputs (`ssiformer.build`, `ssiformer.sample prepare`
 and `inputs`) runs on the CPU.
 
@@ -65,8 +65,8 @@ them in the repository root; they create the folder `cache/`.
 | `ssiformer_inputs_loops.zip` (60 MB) | anchor tensors of GM12878, K562 and HeLa-S3 that also contain the anchor bins of the tables of loops without silencers; unzip after `ssiformer_inputs.zip` and replace the three files (needed for training with `--extra-loops`; the inputs of every other table are unchanged) |
 
 ```bash
-curl -L -O https://github.com/shenlab-ahmu/SSIFormer/releases/download/v1.2.0/ssiformer_inputs.zip && unzip ssiformer_inputs.zip
-curl -L -O https://github.com/shenlab-ahmu/SSIFormer/releases/download/v1.2.0/ssiformer_inputs_loops.zip && unzip -o ssiformer_inputs_loops.zip
+curl -L -O https://github.com/shenlab-ahmu/SSIFormer/releases/download/v1.3.0/ssiformer_inputs.zip && unzip ssiformer_inputs.zip
+curl -L -O https://github.com/shenlab-ahmu/SSIFormer/releases/download/v1.3.0/ssiformer_inputs_loops.zip && unzip -o ssiformer_inputs_loops.zip
 ```
 
 (or download the files from the release pages of the repository).
@@ -144,15 +144,15 @@ python -m ssiformer.train mESC_H3K27ac ssiformer --pretrain    # the pretraining
 
 With `--extra-loops`, the training folds of the SSI table and of the table of loops without silencers of the same HiChIP sample
 (`benchmark/loops/<dataset>.tsv.gz`) are used in every epoch; batches are drawn within one table and interleaved in random
-order, each table keeps its own input normalisation, and early stopping and testing use the SSI table only. These
+order, each table keeps its own input normalization, and early stopping and testing use the SSI table. These
 tables hold loops without a silencer-locus midpoint in either anchor bin, on the cross-validation chromosomes, 20 kb to
 2 Mb apart, up to ten times the SSIs of the dataset on these chromosomes before negative matching and at most 30,000,
 with negatives drawn 1:1 from pairs of their anchor bins by the rules of the SSI table (`configs/benchmark.yaml`,
 `other_loops`).
 
-Retraining on another GPU or PyTorch version can change the last digits. On an RTX 3070, the five folds of the extended
+Retraining on another GPU or PyTorch version can change the last digits. On a single GPU, the five folds of the extended
 configuration take about 20 min (HeLa-S3 CTCF) to 80 min (GM12878 H3K27ac); `SSIFORMER_MEMORY_BUDGET` lowers the
-micro-batch size on a GPU with less memory (same optimisation steps).
+micro-batch size on a GPU with less memory (same optimization steps).
 
 ## Using SSIFormer on a new sample
 
@@ -171,13 +171,13 @@ python -m ssiformer.sample my_sample.yaml score --model <name>/ssiformer_pretrai
 
 1. **Candidate pairs.** Silencer elements are merged into loci (overlap of at least 1 bp; locus = midpoint). Candidate
    pairs are pairs of 10-kb bins on one chromosome, 20 kb to 2 Mb apart, whose two bins are candidate anchors: with
-   loops, the bins that anchor HiChIP SSIs (loops with a silencer-locus midpoint in both anchor bins; all evaluations of
-   the paper used such candidates); without loops, every bin with a silencer-locus midpoint.
+   loops, the bins that anchor HiChIP SSIs (loops with a silencer-locus midpoint in both anchor bins, as in the benchmark
+   tables of the paper); without loops, every bin with a silencer-locus midpoint (as in the genome-wide atlases).
 2. **Inputs.** 1-kb tracks of the marks (log1p of the mean signal per kb) and of the silencer loci, motif channels and the
    anchor tensors of all candidate bins, computed exactly as for the datasets of the paper.
 3. **Scores.** Each candidate pair is scored by the mean of the five fold models of the chosen model (`model` in the sample
    file, e.g. `K562_H3K27ac/ssiformer_pretrained`; for a cell line with few SSIs, the model of another cell line
-   profiled with the same HiChIP target), each with the input normalisation it was trained with, averaged over both
+   profiled with the same HiChIP target), each with the input normalization it was trained with, averaged over both
    orientations of the pair. The output `samples/<name>/scores.tsv` has one row per pair: `chrom, a, b` (bin indices), `start_a, start_b, distance`,
    `hichip_ssi` (1 for a HiChIP SSI), `logit`, `probability`, `percentile_a` and `percentile_b` (the percentage of the
    candidate pairs of anchor bin a, resp. b, scored at or below the pair, i.e. its rank among the partners of each
@@ -190,11 +190,11 @@ python -m ssiformer.sample my_sample.yaml score --model <name>/ssiformer_pretrai
    configuration (mouse pretraining, then fine-tuning on the SSIs and the loops without silencers; `--from-scratch` without
    pretraining) and prints the out-of-fold AUROC on the SSI table of the sample; `score --model
    <name>/ssiformer_pretrained_loops` then scores the candidates with these models. For a human sample with HiChIP loops
-   this is the configuration the paper recommends; it was evaluated by cross-validation.
+   this is the configuration the paper recommends.
 
 ## Expected runtimes
 
-On an NVIDIA RTX 3070 (8 GB; PyTorch 2.0.0, Linux under WSL2), scoring 10,000 pairs of a human table (GM12878 H3K27ac
+On a single NVIDIA GPU (PyTorch 2.0.0, Linux), scoring 10,000 pairs of a human table (GM12878 H3K27ac
 pairs, 20 kb to 2 Mb, median 370 kb, drawn with replacement) with the five fold models, both orientations of every pair,
 took 99 s for the whole command (`python -m ssiformer.predict ... --table`, including start-up and reading the inputs
 from the cache, 3 s), about 500 pairs per second per fold model, and 367 s with `--strand-exchange` (about 140 pairs per
@@ -203,6 +203,36 @@ in repeated runs).
 The out-of-fold scores of a benchmark dataset take 6 to 25 s. Training the five folds takes about 20 to 80 min per human dataset
 with `--extra-loops` (above). The inputs of a new sample take about 1 min per 500 Mb of chromosomes with two CPU
 processes (69 s for six human chromosomes with 469 Mb, below 0.3 GB of memory), about 8 min for a whole human genome.
+
+## Genome-wide SSI atlases
+
+The atlases score every pair of silencer-containing 10-kb bins on one chromosome whose distance lies in the range of the
+SSIs of the dataset's cross-validation table (within 20 kb to 2 Mb), on all chromosomes, for six datasets (GM12878
+H3K27ac, SMC1A and CTCF, K562 H3K27ac, mESC H3K27ac and H3K27me3). Pairs on a cross-validation chromosome are
+scored by the fold model that neither trained nor early-stopped on that chromosome, and pairs on the held-out chromosomes
+by the mean of the five fold models. Each file `<dataset>.atlas.tsv.gz` (release assets of v1.3.0 for `GM12878_H3K27ac`,
+`GM12878_SMC1A`, `GM12878_CTCF`, `K562_H3K27ac`, `mESC_H3K27ac` and `mESC_H3K27me3`, 4.5–129 MB each; SHA-256 checksums
+in `SHA256SUMS.txt`) has the columns `chrom, a, b, d, label, fold, logit, probability, percentile` (`a`, `b`: 10-kb bin
+indices; `label`: 1 for a HiChIP SSI of the dataset; `fold`: 0–4 or `sealed`; `percentile`: rank among all candidate
+pairs of the dataset). Rank pairs by `logit` or `percentile`, for example the partners of one silencer bin or all pairs
+of a locus.
+
+```bash
+curl -L -O https://github.com/shenlab-ahmu/SSIFormer/releases/download/v1.3.0/K562_H3K27ac.atlas.tsv.gz
+```
+
+## Visualization
+
+`ssiformer.plot` draws the highest-scoring pairs of a region as arcs above the genome, optional reference pairs (for
+example HiChIP SSIs) below it and optional signal tracks:
+
+```bash
+python -m ssiformer.plot samples/<name>/scores.tsv --region chr8:97,500,000-99,500,000 --top 67 \
+    --reference hichip_ssi --bigwig H3K27me3=raw/bigwig/K562/K562_H3K27me3.bigWig --out region.pdf
+```
+
+The input is any table with `chrom`, `a`, `b` and a score column: the scores of a new sample (`ssiformer.sample ... score`)
+or an atlas file (`--reference label`).
 
 ## Datasets and inputs from the raw files
 
@@ -223,9 +253,11 @@ The tables and inputs of the independent-test datasets are provided (`benchmark/
 
 ## Citation
 
-SSIFormer: a loop-domain Transformer predicts silencer–silencer interactions across cell types and species
-(manuscript under review).
+SSIFormer: genome-wide prediction of silencer–silencer interactions across cell types and species
+(manuscript submitted).
+
+Archived release (code, trained models, model inputs and atlases): https://doi.org/10.5281/zenodo.24490966
 
 ## License
 
-MIT (see `LICENSE`). Third-party resources keep their own licences: the Loop Catalog, SilencerDB, ENCODE and JASPAR.
+MIT (see `LICENSE`). Third-party resources keep their own licenses: the Loop Catalog, SilencerDB, ENCODE and JASPAR.

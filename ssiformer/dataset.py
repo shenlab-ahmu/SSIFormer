@@ -1,5 +1,5 @@
 """Model inputs of one dataset: 1-kb loop-domain tokens (gathered on the GPU from one concatenated genome track),
-multi-scale anchor tensors and log distance; per-fold normalisation fitted on training rows; the orientation flip F."""
+multi-scale anchor tensors and log distance; per-fold normalization fitted on training rows; the orientation flip F."""
 import os
 
 import numpy as np
@@ -143,7 +143,7 @@ class SpanData:
         return self.norm
 
     def set_norm(self, norm):
-        """use stored normalisation statistics (e.g. those a fold model was trained with)."""
+        """use stored normalization statistics (e.g. those a fold model was trained with)."""
         self.norm = {k: (np.asarray(v, dtype=np.float64) if isinstance(v, list) else v) for k, v in norm.items()}
 
     def to_device(self):

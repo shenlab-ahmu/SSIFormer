@@ -3,13 +3,13 @@
   python -m ssiformer.train <dataset> <model> [--folds 0,1,2,3,4] [--pretrain] [--extra-loops]
 
 <model> is a key of configs/ssiformer.yaml models. --pretrain fits the model on mESC_H3K27ac (folds 1-4 train, fold 0
-early stopping) and writes runs/pretrain/<model>/best.pt, the initialisation of 'ssiformer_pretrained' (without a
+early stopping) and writes runs/pretrain/<model>/best.pt, the initialization of 'ssiformer_pretrained' (without a
 local pretraining run, 'ssiformer_pretrained' starts from weights/pretrain/ssiformer.pt, the pretrained model of the paper).
 
 --extra-loops trains the version of <model> that also learns from the loops without silencers of the dataset's HiChIP sample (model key
 '<model>_loops'; table benchmark/loops/<dataset>.tsv.gz, see ssiformer.build loops). The training folds of the SSI table and of
 the loop table are used in every epoch (batches are drawn within one table and interleaved in random order; each table keeps
-its own input normalisation, fitted on its training rows); early stopping and testing use the SSI table only.
+its own input normalization, fitted on its training rows); early stopping and testing use the SSI table only.
 'ssiformer_pretrained --extra-loops' (mouse pretraining, then fine-tuning on the SSIs and the loops without silencers) is the extended
 configuration.
 
@@ -56,7 +56,7 @@ def gpu():
 
 
 def memory_budget(default):
-    """micro-batch budget (sum of squared input lengths per micro-batch; the optimisation step is the same). SSIFORMER_MEMORY_BUDGET
+    """micro-batch budget (sum of squared input lengths per micro-batch; the optimization step is the same). SSIFORMER_MEMORY_BUDGET
     overrides it, e.g. on a GPU with less memory (only the floating-point summation order of the gradients changes)."""
     return int(os.environ.get('SSIFORMER_MEMORY_BUDGET') or default)
 
@@ -90,7 +90,7 @@ def predict_logits(model, D, rows, noflip, bs, budget=None):
 
 
 def train_batch(model, opt, scaler, D, b, flips, lr, budget, grad_clip, tot_loss):
-    """one optimisation step on batch b (split into micro-batches when long)."""
+    """one optimization step on batch b (split into micro-batches when long)."""
     import torch
     import torch.nn.functional as F
     for g in opt.param_groups:

@@ -18,7 +18,7 @@ The score is the logit averaged over the two orientations of a pair. --strand-ex
 CTCF plus- and minus-strand motif channels are exchanged over the whole region (convergent <-> divergent motif pairs,
 positions unchanged): a more negative value means a stronger dependence of the pair on the CTCF orientation.
 
-Each fold model uses the input normalisation it was trained with. Trained weights are stored in fp16."""
+Each fold model uses the input normalization it was trained with. Trained weights are stored in fp16."""
 import argparse
 import json
 import os
@@ -50,7 +50,7 @@ def load_fold_model(name, model, k, n_marks, n_channels, dev):
 
 
 def predict_rows(D, net, rows, equivariant, bs=32):
-    """logits of the rows; with orientation symmetrisation, the mean over both orientations of each pair."""
+    """logits of the rows; with orientation symmetrization, the mean over both orientations of each pair."""
     import torch
     f, r = np.zeros(len(rows), np.float32), np.zeros(len(rows), np.float32)
     pos = {x: i for i, x in enumerate(rows)}
@@ -107,7 +107,7 @@ def gpu():
 
 
 def fold_scores(D, name, model, fold=None, swap=False):
-    """scores of the rows of D with the five fold models of <name>/<model>, each with its own input normalisation.
+    """scores of the rows of D with the five fold models of <name>/<model>, each with its own input normalization.
     fold (array of the rows' fold labels): every row is scored by the model of its test fold (out-of-fold); None: mean of the
     five fold models. Returns (logit, strand-exchange change or None, logits of the single fold models (5, n))."""
     import torch
